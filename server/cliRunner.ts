@@ -879,6 +879,7 @@ export function startCliSession(opts: SessionOptions, callbacks: SessionCallback
     codexHook: box ? `${BOX_BIN}/codex-hook.cjs` : path.join(BIN_DIR, 'codex-hook.cjs'),
     plugin: box ? '' : pathToFileURL(path.join(BIN_DIR, 'opencode-plugin.mjs')).href,
     browser,
+    office: opts.office && !box ? { url: `${officeUrl}/api/mcp/${token}` } : null,
     ...(box ? { node: 'node', posix: true } : {}),
   });
 

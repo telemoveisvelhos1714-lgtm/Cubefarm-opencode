@@ -151,6 +151,8 @@ export interface LaunchContext {
   plugin: string; // file URL of the OpenCode plugin
   /** The Playwright MCP server, when the floor tests in a browser. Claude Code gets it through its MCP config file. */
   browser: { command: string; args: string[] } | null;
+  /** The CEO's office MCP server (Streamable HTTP) for OpenCode's config; Claude Code gets it through files.mcp. */
+  office?: { url: string } | null;
   /** The node that runs the office's helper scripts where the CLI runs (default: the office's own). */
   node?: string;
   /** The CLI runs on Linux (a cloud agent's Box), whatever this computer is. */
@@ -287,13 +289,17 @@ export function launchArgs(id: AgentCli, ctx: LaunchContext): Launch {
     }
     case 'opencode': {
       const local = localModel(ctx.model);
+      const mcp: Record<string, unknown> = {
+        ...(ctx.browser ? { playwright: { type: 'local', command: [ctx.browser.command, ...ctx.browser.args], enabled: true } } : {}),
+        ...(ctx.office ? { office: { type: 'remote', url: ctx.office.url, enabled: true } } : {}),
+      };
       const config = {
         plugin: [ctx.plugin],
         instructions: [ctx.files.system],
         autoupdate: false, // several agents starting at once must not each reinstall it
         permission: { edit: 'allow', bash: 'allow', webfetch: 'allow' }, // it can't stop to ask either
         ...opencodeLocal(local),
-        ...(ctx.browser ? { mcp: { playwright: { type: 'local', command: [ctx.browser.command, ...ctx.browser.args], enabled: true } } } : {}),
+        ...(Object.keys(mcp).length ? { mcp } : {}),
       };
       // No project argument: it starts in its terminal's folder, and a desk path in its command line would make the
       // desk clean-up take it for a leftover.

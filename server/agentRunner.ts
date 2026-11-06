@@ -11,7 +11,7 @@ import { CROSS_TURN_TOOLS } from './clis.ts';
 import { VERSION } from './config.ts';
 
 // One Claude Code instance (via the Claude Agent SDK) on one task (building an issue, testing or fixing a PR) in its own git worktree.
-// The CEO runs through here too, with the office tools instead of a shell.
+// The CEO runs through here too in the SDK runtime, with the office tools instead of a shell.
 
 export interface SessionOptions {
   cwd: string;

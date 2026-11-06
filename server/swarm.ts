@@ -2520,7 +2520,8 @@ export class Swarm {
   updateAgent(id: string, patch: { name?: string; model?: string; effort?: string; cli?: string; host?: string; look?: string; color?: string; hair?: string; style?: unknown }) {
     const a = this.agent(id);
     if (patch.host !== undefined && a.role !== 'ceo' && (patch.host === 'box' || patch.host === 'local')) this.moveAgent(a, patch.host);
-    if (patch.cli !== undefined && a.role !== 'ceo') {
+    if (patch.cli !== undefined) {
+      if (a.role === 'ceo' && patch.cli === 'codex') throw new HttpError(400, `${a.name} runs on Claude Code or OpenCode; Codex can't run the company.`);
       const cli = isCli(patch.cli) ? patch.cli : '';
       if (a.host === 'box' && (cli || this.state.settings.defaultCli) === 'opencode') throw new HttpError(400, `${a.name} works in the cloud, where OpenCode can't run yet: move them to this computer first.`);
       if (cli && a.host !== 'box' && !this.cliReady(cli)) throw new HttpError(400, `${cliLabel(cli)} isn't installed on this computer.`);
@@ -2679,7 +2680,7 @@ export class Swarm {
   private sessionRuntime(a: PersistedAgent, resume?: string): { terminal?: AgentTerminal; cli?: AgentCli; label?: string; resumeSessionId?: string } {
     // A cloud agent's CLI always runs in a terminal: their Box's, which needs nothing from this computer.
     const inTerminal = a.host === 'box' || (this.state.settings.runtime === 'terminal' && this.backend.terminals);
-    let cli: AgentCli = a.role === 'ceo' ? 'claude' : a.cli || this.state.settings.defaultCli;
+    let cli: AgentCli = a.role === 'ceo' ? a.cli || 'claude' : a.cli || this.state.settings.defaultCli;
     if (resume && a.sessionCli && a.sessionCli !== cli) {
       if (inTerminal) cli = a.sessionCli;
       else if (a.sessionCli !== 'claude') resume = undefined;
@@ -2692,6 +2693,11 @@ export class Swarm {
   /** The model to ask for (the Agent SDK runs Claude Code). '' lets another coding agent use its own default. */
   private modelFor(a: PersistedAgent, cli: AgentCli | undefined) {
     return effectiveModel(a.model, cli ?? 'claude', this.state.settings, DEFAULT_MODEL);
+  }
+
+  /** The model the CEO asks for: CEO_MODEL on Claude Code, its own default elsewhere (unless the manager named a model that suits). */
+  private ceoModel(a: PersistedAgent, cli: AgentCli) {
+    return effectiveModel(a.model, cli, { defaultCli: 'claude', defaultModel: CEO_MODEL }, CEO_MODEL);
   }
 
   // ---------- terminals ----------
@@ -4310,7 +4316,7 @@ export class Swarm {
 
   private ceoPromptInput(a: PersistedAgent): Parameters<typeof ceoSystemPrompt>[0] {
     const s = this.state.settings;
-    return { name: a.name, company: s.companyName, manager: s.managerName, notesFile: path.join(CEO_DIR, 'NOTES.md'), sessionLimit: s.sessionLimit, maxAgents: s.maxAgents, scaling: s.scaling };
+    return { name: a.name, company: s.companyName, manager: s.managerName, notesFile: path.join(CEO_DIR, 'NOTES.md'), sessionLimit: s.sessionLimit, maxAgents: s.maxAgents, scaling: s.scaling, cli: a.cli || 'claude' };
   }
 
   private async runCeoJob(a: PersistedAgent, job: CeoJob) {
@@ -4344,12 +4350,13 @@ export class Swarm {
     }
     // A chat carries on from the CEO's last session, so "why did you propose that?" has an answer.
     const how = this.sessionRuntime(a, job.kind === 'chat' ? (a.sessionId ?? undefined) : undefined);
+    const ceoCli = how.cli ?? (a.cli || 'claude');
     rt.session = this.backend.startSession(
       {
         cwd: CEO_DIR,
         prompt: ceoJobPrompt(job, floor, triage),
-        systemAppend: ceoSystemPrompt(this.ceoPromptInput(a)),
-        model: a.model || CEO_MODEL,
+        systemAppend: ceoSystemPrompt({ ...this.ceoPromptInput(a), cli: ceoCli }),
+        model: this.ceoModel(a, ceoCli),
         effort: a.effort || CEO_EFFORT,
         browserTesting: false,
         additionalDirectories: this.state.repos.filter((r) => this.repoRt.get(r.id)?.cloneStatus === 'ready').map((r) => this.backend.mainDir(r.fullName)),
@@ -4366,7 +4373,7 @@ export class Swarm {
         },
         sessionId: (id) => {
           a.sessionId = id;
-          a.sessionCli = id ? 'claude' : null;
+          a.sessionCli = id ? (how.cli ?? 'claude') : null;
         },
         browserUrl: () => undefined,
         screenshot: () => undefined,
@@ -5345,10 +5352,10 @@ export class Swarm {
   /** What an agent runs, defaults resolved, for the CEO. */
   private agentSetup(a: PersistedAgent) {
     const ceo = a.role === 'ceo';
-    const cli = ceo ? 'claude' : a.cli || this.state.settings.defaultCli;
+    const cli = ceo ? a.cli || 'claude' : a.cli || this.state.settings.defaultCli;
     return {
       codingAgent: cli,
-      model: ceo ? a.model || CEO_MODEL : this.modelFor(a, cli) || 'the coding agent default',
+      model: ceo ? this.ceoModel(a, cli) || 'the coding agent default' : this.modelFor(a, cli) || 'the coding agent default',
       effort: a.effort || (ceo ? CEO_EFFORT : this.state.settings.defaultEffort),
     };
   }
