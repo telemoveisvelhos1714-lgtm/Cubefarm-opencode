@@ -162,6 +162,13 @@ describe('launchArgs', () => {
     expect(config({}).autoupdate).toBe(false);
   });
 
+  it('gives OpenCode the office MCP server when it runs the CEO', () => {
+    const url = 'http://127.0.0.1:1/api/mcp/token';
+    const withOffice = JSON.parse(launchArgs('opencode', ctx({ office: { url } })).env.OPENCODE_CONFIG_CONTENT);
+    expect(withOffice.mcp.office).toEqual({ type: 'remote', url, enabled: true });
+    expect(JSON.parse(launchArgs('opencode', ctx({})).env.OPENCODE_CONFIG_CONTENT).mcp).toBeUndefined();
+  });
+
   it('runs Codex on a local model through its own --oss, or a provider of the office\'s', () => {
     const args = (model: string) => launchArgs('codex', ctx({ model })).args;
     expect(args('gpt-5.5').join(' ')).toContain('-m gpt-5.5');

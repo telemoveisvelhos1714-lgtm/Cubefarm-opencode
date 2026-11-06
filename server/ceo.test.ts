@@ -324,6 +324,15 @@ describe('triage', () => {
   });
 });
 
+describe('the CEO on OpenCode', () => {
+  it('names the office tools with the office_ prefix OpenCode uses', () => {
+    const prompt = ceoSystemPrompt({ name: 'Luna', company: 'Acme', manager: 'Sam', notesFile: 'notes.md', sessionLimit: 0, maxAgents: 10, scaling: 'approve', cli: 'opencode' });
+    expect(prompt).toContain('Call office_company_status first.');
+    expect(prompt).toContain('Change things only through the office_ tools.');
+    expect(prompt).not.toContain('mcp__office__');
+  });
+});
+
 describe('floorCapacity', () => {
   // #1 ← #2 ← #3, and #5 waits for #4. #2 is already in progress.
   const issues = [

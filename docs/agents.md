@@ -29,7 +29,7 @@ Codex and OpenCode agents can run on a model server on your computer instead of 
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server`) | `llamacpp/<model>` | `http://127.0.0.1:8080/v1` (`CUBEFARM_LLAMACPP_URL`) | Responses API | ✓ |
 | oMLX | `omlx/<model>` | `http://127.0.0.1:8000/v1` (`CUBEFARM_OMLX_URL`) | Responses API | ✓ |
 
-Everything after the first `/` is the server's own name for the model. OpenCode gets the server as an OpenAI-compatible provider; Codex uses its built-in Ollama and LM Studio support, or, for the others (or an address you changed), a provider pointed at the server's Responses API. Set the `CUBEFARM_*_URL` variables in the office's environment before starting it. Claude Code and the CEO stay on Claude, and cloud agents can't reach a server on your computer. Agents need a model that's good at tool calls and a long context (Ollama's default context is too short for agent work: raise `num_ctx` / `OLLAMA_CONTEXT_LENGTH`).
+Everything after the first `/` is the server's own name for the model. OpenCode gets the server as an OpenAI-compatible provider; Codex uses its built-in Ollama and LM Studio support, or, for the others (or an address you changed), a provider pointed at the server's Responses API. Set the `CUBEFARM_*_URL` variables in the office's environment before starting it. Claude Code stays on Claude, and cloud agents can't reach a server on your computer; the CEO can run a local model only on OpenCode. Agents need a model that's good at tool calls and a long context (Ollama's default context is too short for agent work: raise `num_ctx` / `OLLAMA_CONTEXT_LENGTH`).
 
 ## A floor's team
 
